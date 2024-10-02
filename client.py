@@ -3,9 +3,23 @@ import object_detection_pb2_grpc, object_detection_pb2
 import json
 import time
 import cv2
+import requests
+import numpy as np
 
+def download_image(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        # Convert the image to a numpy array
+        image_array = np.asarray(bytearray(response.content), dtype=np.uint8)
+        # Decode the image array to an OpenCV format
+        image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+        return image
+    else:
+        print(f"Failed to download image from URL. Status code: {response.status_code}")
+        return None
 
 def plot_results(image, detected_objects, output_image_path):
+    print(image)
     for obj in detected_objects:
         # Ensure that coordinates are integers
         x = int(obj['x'])
@@ -17,7 +31,7 @@ def plot_results(image, detected_objects, output_image_path):
         cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
         # Optionally put label and confidence text on the image
-        label = f"Label: {obj['label']}, Conf: {obj['confidence']:.2f}"
+        label = f"L: {obj['label']}, C: {obj['confidence']:.2f}"
         cv2.putText(image, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
 
     # Save the image with plotted results to client side
@@ -68,7 +82,16 @@ def run(image_path, model_type):
         print(f"Status code: {e.code()}")
 
     # Load the image and plot the results
-    image = cv2.imread(image_path)
+    # Check if the image_path is a URL
+    if image_path.startswith('http://') or image_path.startswith('https://'):
+        image = download_image(image_path)
+    else:
+        image = cv2.imread(image_path)
+
+    if image is None:
+        print("Image loading failed. Exiting.")
+        return
+
     output_image_path = 'output.jpg'
     plot_results(image, output, output_image_path)
 
