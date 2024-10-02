@@ -28,6 +28,7 @@ def plot_results(image, detected_objects, output_image_path):
 
 
 def run(image_path, model_type):
+    output = []
     try:
         with grpc.insecure_channel('localhost:50051') as channel:
             start_time = time.time()
@@ -43,7 +44,7 @@ def run(image_path, model_type):
             print(f"Accuracy: {response.accuracy:.2f}")
             print(f"Energy Efficiency: {response.energy_efficiency}")
 
-            output = []
+            
             for obj in response.objects:
                 output.append({
                     'label': obj.label,
@@ -82,7 +83,27 @@ if __name__ == '__main__':
         '6': 'keypointrcnn',
         '7': 'retinanet',
         '8': 'ssd',
-        '9': 'ssdlite'
+        '9': 'ssdlite',
+        '10': 'yolov3n',
+        '11': 'yolov5s',  # YOLOv5 small model
+        '12': 'yolov5l', # YOLOv5 large model
+        '13': 'yolov5x', # YOLOv5 extra large model
+        '14': 'yolov6-n', # YOLOv6 neno model
+        '15': 'yolov6-s', # YOLOv6 small model
+        '16': 'yolov6-m', # YOLOv6 medium model
+        '17': 'yolov6-l', # YOLOv6 large model
+        '18': 'yolov6-l6', # YOLOv6 small model
+        '19': 'yolov8n', # YOLOv8 nano model
+        '20': 'yolov8s', # YOLOv8 small model
+        '21': 'yolov8m', # YOLOv8 medium model
+        '22': 'yolov8l', # YOLOv8 large model
+        '23': 'yolov8x',  # YOLOv8 extra large model
+        '24': 'tf-ssd',     # TensorFlow SSD
+        '25': 'tf-fasterrcnn', # TensorFlow fasterrcnn
+        '26': 'tf-efficientdet', # TensorFlow efficientdet
+        '27': 'tf-retinanet',   # TensorFlow retinanet
+        '28': 'tf-centernet',   # TensorFlow centernet
+        '29': 'tf-maskrcnn',    # TensorFlow maskrcnn
     }
 
         
