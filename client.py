@@ -121,12 +121,21 @@ if __name__ == '__main__':
         '21': 'yolov8m', # YOLOv8 medium model
         '22': 'yolov8l', # YOLOv8 large model
         '23': 'yolov8x',  # YOLOv8 extra large model
-        '24': 'tf-ssd',     # TensorFlow SSD
-        '25': 'tf-fasterrcnn', # TensorFlow fasterrcnn
-        '26': 'tf-efficientdet', # TensorFlow efficientdet
-        '27': 'tf-retinanet',   # TensorFlow retinanet
-        '28': 'tf-centernet',   # TensorFlow centernet
-        '29': 'tf-maskrcnn',    # TensorFlow maskrcnn
+        '24': 'tf-ssd_mobilenet_v2',     
+        '25': 'tf-ssd_mobilenet_v1', 
+        '26': 'tf-ssd_resnet50', 
+        '27': 'tf-faster_rcnn_resnet50',  
+        '28': 'tf-faster_rcnn_inception',   
+        '29': 'tf-efficientdet_d0',    
+        '30': 'tf-efficientdet_d1',
+        '31': 'tf-efficientdet_d2',
+        '32': 'tf-efficientdet_d3',
+        '33': 'tf-retinanet',
+        '34': 'tf-centernet_hourglass',
+        '35': 'tf-centernet_resnet50',
+        '36': 'tf-mask_rcnn_resnet50',
+        '37': 'tf-mask_rcnn_inception',
+        '38': 'tf-yolo_v4',
     }
 
         

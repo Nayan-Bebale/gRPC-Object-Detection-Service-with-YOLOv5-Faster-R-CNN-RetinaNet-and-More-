@@ -86,71 +86,98 @@ def load_model(model_name="fasterrcnn"):
     model.eval()  # Set the model to evaluation mode
     return model
 
-# Function to load TensorFlow model
+# Function to load TensorFlow models
 def load_tf_model(model_name):
-    if model_name == "ssd":
+    if model_name == "ssd_mobilenet_v2":
         model = hub.load("https://tfhub.dev/tensorflow/ssd_mobilenet_v2/2")
-    elif model_name == "fasterrcnn":
+    elif model_name == "ssd_mobilenet_v1":
+        model = hub.load("https://tfhub.dev/tensorflow/ssd_mobilenet_v1/fpn_640x640/1")
+    elif model_name == "ssd_resnet50":
+        model = hub.load("https://tfhub.dev/tensorflow/ssd_resnet50_v1_fpn_640x640/1")
+        
+    # Faster R-CNN models
+    elif model_name == "faster_rcnn_resnet50":
         model = hub.load("https://tfhub.dev/tensorflow/faster_rcnn/resnet50_v1_640x640/1")
-    elif model_name == "efficientdet":
+    elif model_name == "faster_rcnn_inception":
+        model = hub.load("https://tfhub.dev/tensorflow/faster_rcnn/inception_resnet_v2_640x640/1")
+        
+    # EfficientDet models
+    elif model_name == "efficientdet_d0":
         model = hub.load("https://tfhub.dev/tensorflow/efficientdet/d0/1")
+    elif model_name == "efficientdet_d1":
+        model = hub.load("https://tfhub.dev/tensorflow/efficientdet/d1/1")
+    elif model_name == "efficientdet_d2":
+        model = hub.load("https://tfhub.dev/tensorflow/efficientdet/d2/1")
+    elif model_name == "efficientdet_d3":
+        model = hub.load("https://tfhub.dev/tensorflow/efficientdet/d3/1")
+        
+    # RetinaNet models
     elif model_name == "retinanet":
         model = hub.load("https://tfhub.dev/tensorflow/retinanet/resnet50_v1_fpn_640x640/1")
-    elif model_name == "centernet":
+        
+    # CenterNet models
+    elif model_name == "centernet_hourglass":
         model = hub.load("https://tfhub.dev/tensorflow/centernet/hourglass_512x512/1")
-    elif model_name == "maskrcnn":
+    elif model_name == "centernet_resnet50":
+        model = hub.load("https://tfhub.dev/tensorflow/centernet/resnet50v1_fpn_512x512/1")
+        
+    # Mask R-CNN models
+    elif model_name == "mask_rcnn_resnet50":
         model = hub.load("https://tfhub.dev/tensorflow/mask_rcnn/resnet50_v1_fpn_1024x1024/1")
+    elif model_name == "mask_rcnn_inception":
+        model = hub.load("https://tfhub.dev/tensorflow/mask_rcnn/inception_resnet_v2_atrous_coco/1")
+    
+    # Option for other models (e.g., YOLO, OpenPose, etc.)
+    elif model_name == "yolo_v4":
+        model = hub.load("https://tfhub.dev/tensorflow/yolov4-tiny/1")
     else:
-        raise ValueError(f"Unsupported model: {model_name}")
+        raise ValueError("Model name not recognized. Please choose a valid model.")
+    
     return model
 
+# Function to run the model and perform object detection
 # Function to run the model and perform object detection
 def run_tf_model(image_path, model_name):
     # Load the specified TensorFlow model
     model = load_tf_model(model_name)
-
     # Load and preprocess the image
     if image_path.startswith('http'):  # If the input is a URL
         response = requests.get(image_path)
         image = Image.open(BytesIO(response.content)).convert("RGB")
     else:
         image = Image.open(image_path).convert("RGB")
-
     # Convert image to tensor and normalize
     image_tensor = tf.convert_to_tensor(np.array(image), dtype=tf.uint8)
     image_tensor = tf.expand_dims(image_tensor, axis=0)  # Add batch dimension
-
-
     start_time = time.time()
-    
     # Perform object detection
     detections = model(image_tensor)
-
     # Stop the inference time
     end_time = time.time()
     latency = calculate_latency(start_time, end_time)
-
     # Process the predictions
     detected_objects = []
     accuracy = 0.0  # Placeholder for accuracy calculation
-
+    image_width, image_height = image.size
     for i in range(len(detections['detection_scores'][0])):
         score = detections['detection_scores'][0][i].numpy()
         if score > 0.5:  # Confidence threshold
             box = detections['detection_boxes'][0][i].numpy().tolist()  # Convert tensor to list
             label_id = int(detections['detection_classes'][0][i].numpy())  # Convert to Python int
-            
             label_name = COCO_INSTANCE_CATEGORY_NAMES[label_id]
+            x_min = int(box[1] * image_width)
+            y_min = int(box[0] * image_height)
+            x_max = int(box[3] * image_width)
+            y_max = int(box[2] * image_height)
             detected_objects.append({
                 'label': label_name,
                 'confidence': score,
-                'x': box[1],  # x_min
-                'y': box[0],  # y_min
-                'width': box[3] - box[1],  # width
-                'height': box[2] - box[0]  # height
+                'x': x_min,
+                'y': y_min,
+                'width': x_max - x_min,
+                'height': y_max - y_min
             })
             accuracy += score  # Sum the confidence for accuracy calculation
-
     # Calculate average accuracy
     accuracy /= len(detected_objects) if detected_objects else 1  # Avoid division by zero
     return detected_objects, latency, accuracy
