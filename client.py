@@ -19,7 +19,6 @@ def download_image(url):
         return None
 
 def plot_results(image, detected_objects, output_image_path):
-    print(image)
     for obj in detected_objects:
         # Ensure that coordinates are integers
         x = int(obj['x'])
