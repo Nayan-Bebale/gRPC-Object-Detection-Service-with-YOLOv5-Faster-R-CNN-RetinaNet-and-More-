@@ -3,7 +3,7 @@
 This repository implements an object detection service powered by gRPC. The service currently supports state-of-the-art object detection models including YOLOv5, Faster R-CNN, and RetinaNet. The service is designed to process image data and return the bounding boxes, labels, and confidence scores for detected objects. More models will be added in the future.
 
 ## Output
-<img src="https://raw.githubusercontent.com/Nayan-Bebale/gRPC-Object-Detection-Service-with-YOLOv5-Faster-R-CNN-RetinaNet-and-More-/refs/heads/main/output.jpg" width="600" height="600" />
+<img src="https://raw.githubusercontent.com/Nayan-Bebale/gRPC-Object-Detection-Service-with-YOLOv5-Faster-R-CNN-RetinaNet-and-More-/refs/heads/main/output.jpg" width="690" height="600" />
 
 with parameters like Latency Time, Accuracy, Energy Efficiency, CPU Usage, Memory Usage<br>
 ```
