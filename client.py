@@ -1,3 +1,4 @@
+from flask import Flask, render_template, request, redirect, url_for
 import grpc
 import object_detection_pb2_grpc, object_detection_pb2
 import json
@@ -5,98 +6,11 @@ import time
 import cv2
 import requests
 import numpy as np
+import os
 
-def download_image(url):
-    response = requests.get(url)
-    if response.status_code == 200:
-        # Convert the image to a numpy array
-        image_array = np.asarray(bytearray(response.content), dtype=np.uint8)
-        # Decode the image array to an OpenCV format
-        image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
-        return image
-    else:
-        print(f"Failed to download image from URL. Status code: {response.status_code}")
-        return None
+app = Flask(__name__)
 
-def plot_results(image, detected_objects, output_image_path):
-    for obj in detected_objects:
-        # Ensure that coordinates are integers
-        x = int(obj['x'])
-        y = int(obj['y'])
-        w = int(obj['width'])
-        h = int(obj['height'])
-
-        # Draw rectangle around detected objects
-        cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-        # Optionally put label and confidence text on the image
-        label = f"L: {obj['label']}, C: {obj['confidence']:.2f}"
-        cv2.putText(image, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
-
-    # Save the image with plotted results to client side
-    cv2.imwrite(output_image_path, image)
-    print(f"Saved the output image with detected objects at: {output_image_path}")
-
-    return image
-
-
-def run(image_path, model_type):
-    output = []
-    try:
-        with grpc.insecure_channel('localhost:50051') as channel:
-            start_time = time.time()
-            stub = object_detection_pb2_grpc.ObjectDetectionServiceStub(channel)
-
-            request = object_detection_pb2.DetectionRequest(image_path=image_path, model_type=model_type)
-            print(request)
-            response = stub.DetectObjects(request)
-            end_time = time.time()
-
-            latency_time = end_time - start_time
-            print(f"Latency Time: {latency_time:.4f} seconds")
-            print(f"Accuracy: {response.accuracy:.2f}")
-            print(f"Energy Efficiency: {response.energy_efficiency}")
-
-            
-            for obj in response.objects:
-                output.append({
-                    'label': obj.label,
-                    'confidence': obj.confidence,
-                    'x': obj.x,
-                    'y': obj.y,
-                    'width': obj.width,
-                    'height': obj.height
-                })
-
-            with open('output.json', 'w') as f:
-                json.dump(output, f)
-
-            print("Detected objects:")
-            for obj in response.objects:
-                print(f"Label: {obj.label}, Confidence: {obj.confidence}, "
-                      f"Bounding Box: (x: {obj.x}, y: {obj.y}, width: {obj.width}, height: {obj.height})")
-
-    except grpc.RpcError as e:
-        print(f"gRPC call failed: {e.details()}")
-        print(f"Status code: {e.code()}")
-
-    # Load the image and plot the results
-    # Check if the image_path is a URL
-    if image_path.startswith('http://') or image_path.startswith('https://'):
-        image = download_image(image_path)
-    else:
-        image = cv2.imread(image_path)
-
-    if image is None:
-        print("Image loading failed. Exiting.")
-        return
-
-    output_image_path = 'output.jpg'
-    plot_results(image, output, output_image_path)
-
-
-if __name__ == '__main__':
-    models = {
+MODELS = {
         '1': 'fasterrcnn',
         '2': 'fasterrcnn_mobilenet',
         '3': 'fasterrcnn_v2',
@@ -137,13 +51,112 @@ if __name__ == '__main__':
         '38': 'tf-yolo_v4',
     }
 
-        
-    image_path = input("Enter the image path: ")
+# Ensure the static directory for output images exists
+if not os.path.exists('static/output_images'):
+    os.makedirs('static/output_images')
+
+# Function to download the image from URL
+def download_image(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        image_array = np.asarray(bytearray(response.content), dtype=np.uint8)
+        image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+        return image
+    else:
+        print(f"Failed to download image from URL. Status code: {response.status_code}")
+        return None
+
+# Function to plot results and save the image
+def plot_results(image, detected_objects, output_image_name):
+    for obj in detected_objects:
+        x = int(obj['x'])
+        y = int(obj['y'])
+        w = int(obj['width'])
+        h = int(obj['height'])
+
+        cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        label = f"L: {obj['label']}, C: {obj['confidence']:.2f}"
+        cv2.putText(image, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+
+    output_image_path = os.path.join('static', 'output_images', output_image_name)
+    cv2.imwrite(output_image_path, image)
+    print(f"Saved the output image with detected objects at: {output_image_path}")
+    return output_image_path
+
+# gRPC request function
+def run(image_path, model_type):
+    output = []
+    try:
+        with grpc.insecure_channel('localhost:50051') as channel:
+            start_time = time.time()
+            stub = object_detection_pb2_grpc.ObjectDetectionServiceStub(channel)
+
+            request = object_detection_pb2.DetectionRequest(image_path=image_path, model_type=model_type)
+            response = stub.DetectObjects(request)
+            end_time = time.time()
+
+            latency_time = end_time - start_time
+            latency_time = round(latency_time, 4)
+            print(f"Latency Time: {latency_time:.4f} seconds")
+            print(f"Accuracy: {response.accuracy:.2f}")
+            print(f"Energy Efficiency: {response.energy_efficiency}")
+
+            accuracy = response.accuracy
+            energy_efficiency = response.energy_efficiency
+
+            for obj in response.objects:
+                output.append({
+                    'label': obj.label,
+                    'confidence': obj.confidence,
+                    'x': obj.x,
+                    'y': obj.y,
+                    'width': obj.width,
+                    'height': obj.height
+                })
+
+            with open('output.json', 'w') as f:
+                json.dump(output, f)
+
+    except grpc.RpcError as e:
+        print(f"gRPC call failed: {e.details()}")
+        print(f"Status code: {e.code()}")
+
+    if image_path.startswith('http://') or image_path.startswith('https://'):
+        image = download_image(image_path)
+    else:
+        image = cv2.imread(image_path)
+
+    if image is None:
+        print("Image loading failed. Exiting.")
+        return None, None
+
+    output_image_path = 'output.jpg'
+    result_image_path = plot_results(image, output, output_image_path)
+    return output, result_image_path, accuracy, energy_efficiency, latency_time
+
+# Route to serve the HTML form
+@app.route('/')
+def index():
+    
+    return render_template('index.html', models=MODELS)
+
+# Route to handle form submission
+@app.route('/detect', methods=['POST'])
+def detect():
+    image_url = request.form['image_url']
+    model_num = request.form['model']
+    model_type = MODELS[model_num]
 
 
-    print("Select a model for object detection:")
-    for key, model in models.items():
-        print(f"{key}: {model}")
-    model_type = input("Enter the number corresponding to the model you want to use: ")
-    model_name = models[model_type]
-    run(image_path, model_name)
+    objects_detected, result_image, accuracy, energy_efficiency, latency_time = run(image_url, model_type)
+
+
+    
+    if objects_detected:
+        result_image_url = url_for('static', filename=f'output_images/{os.path.basename(result_image)}')
+        return render_template('results.html', objects=objects_detected, result_image=result_image_url, accuracy=accuracy, energy_efficiency=energy_efficiency, latency_time=latency_time)
+    else:
+        return "Object detection failed."
+
+if __name__ == '__main__':
+    app.run(debug=True)

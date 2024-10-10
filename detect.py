@@ -135,7 +135,7 @@ def load_tf_model(model_name):
     
     return model
 
-# Function to run the model and perform object detection
+
 # Function to run the model and perform object detection
 def run_tf_model(image_path, model_name):
     # Load the specified TensorFlow model
